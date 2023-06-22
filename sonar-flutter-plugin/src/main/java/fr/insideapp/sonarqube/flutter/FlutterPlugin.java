@@ -104,6 +104,15 @@ public class FlutterPlugin implements Plugin {
                         .subCategory(ANALYSIS_SUBCATEGORY)
                         .build());
 
+        context.addExtension(
+                PropertyDefinition.builder(DartAnalyzerSensor.ANALYZER_OPTIONS_PUB_GET_BEFORE)
+                        .name("Analyzer pub get before")
+                        .description("Run pub get before running the analyzer. This is useful if you have dependencies that need to be fetched before the analyzer can run.")
+                        .onQualifiers(Qualifiers.PROJECT)
+                        .category(DART_CATEGORY)
+                        .subCategory(ANALYSIS_SUBCATEGORY)
+                        .defaultValue(DartAnalyzerSensor.ANALYZER_OPTIONS_PUB_GET_BEFORE_DEFAULT)
+                        .build());
 
         context.addExtension(
                 PropertyDefinition.builder(DartAnalyzerSensor.ANALYZER_OUTPUT_MODE)

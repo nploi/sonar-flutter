@@ -98,9 +98,27 @@ public abstract class AnalyzerExecutable {
         }
     }
 
+    /**
+     * Run the pub get command before the analyzer.
+     */
+    public void pubGet() throws IOException {
+        final String command = getCommand();
+        final String[] args = { "get" };
+        LOGGER.info("Running '{} {}'", command, args);
+        final ProcResult result = new ProcBuilder(command, args)
+                .withWorkingDirectory(sensorContext.fileSystem().baseDir())
+                .withTimeoutMillis(ANALYZER_TIMEOUT)
+                .ignoreExitStatus()
+                .run();
+
+        LOGGER.info("Command '{}' finished (exit {})", result.getProcString(), result.getExitValue());
+        maybeThrowException(result);
+    }
+
     private void maybeThrowException(ProcResult result) {
         if (result.getExitValue() != 0) {
-            throw new IllegalStateException(String.format("Error while running '%s' (exit %s): %s", result.getProcString(), result.getExitValue(), result.getErrorString()));
+            throw new IllegalStateException(String.format("Error while running '%s' (exit %s): %s",
+                    result.getProcString(), result.getExitValue(), result.getErrorString()));
         }
     }
 
@@ -169,7 +187,8 @@ public abstract class AnalyzerExecutable {
         switch (mode) {
             case MANUAL:
                 if (outputMode.equals(AnalyzerOutput.Mode.DETECT)) {
-                    LOGGER.warn("Manual test report is configured without output mode, this may not work! Defaulting to legacy output.");
+                    LOGGER.warn(
+                            "Manual test report is configured without output mode, this may not work! Defaulting to legacy output.");
                     outputMode = AnalyzerOutput.Mode.LEGACY;
                 }
                 return new ManualAnalyzerExecutable(sensorContext, outputMode);
@@ -225,14 +244,16 @@ public abstract class AnalyzerExecutable {
 
         final String output = new String(result.getErrorBytes(), StandardCharsets.UTF_8).split("\\R", 2)[0];
 
-        // The version always written to stderr - https://github.com/dart-lang/sdk/issues/19704
+        // The version always written to stderr -
+        // https://github.com/dart-lang/sdk/issues/19704
         // Need to use exit code to determine success
         if (exitCode != 0) {
             LOGGER.warn("Could not determine Dart version from output: '{}' - defaulting to legacy mode", output);
             return AnalyzerOutput.Mode.LEGACY;
         }
 
-        final Matcher matcher = Pattern.compile("^Dart SDK version: (.*) \\((.*)\\) \\((.*)\\) on (.*)$").matcher(output);
+        final Matcher matcher = Pattern.compile("^Dart SDK version: (.*) \\((.*)\\) \\((.*)\\) on (.*)$")
+                .matcher(output);
         if (!matcher.matches()) {
             LOGGER.warn("Could not determine Dart version from output: '{}' - defaulting to legacy mode", output);
             return AnalyzerOutput.Mode.LEGACY;

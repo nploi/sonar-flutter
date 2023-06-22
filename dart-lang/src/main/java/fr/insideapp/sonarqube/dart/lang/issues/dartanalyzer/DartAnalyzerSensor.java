@@ -52,6 +52,9 @@ public class DartAnalyzerSensor implements Sensor {
     public static final String ANALYZER_REPORT_PATH = "sonar.dart.analyzer.report.path";
 
     public static final String ANALYZER_OUTPUT_MODE = "sonar.dart.analyzer.report.mode";
+    public static final String ANALYZER_OPTIONS_PUB_GET_BEFORE = "sonar.dart.analyzer.options.pub.get.before";
+    public static final String ANALYZER_OPTIONS_PUB_GET_BEFORE_DEFAULT = "true";
+
     public static final List<AnalyzerOutput.Mode> ANALYZER_OUTPUT_MODE_OPTIONS = asList(AnalyzerOutput.Mode.values());
 
     @Override
@@ -64,13 +67,15 @@ public class DartAnalyzerSensor implements Sensor {
     public void execute(SensorContext sensorContext) {
         try {
             final PubSpec pubSpec = PubSpecParser.parse(sensorContext);
+            AnalyzerExecutable.create(sensorContext, pubSpec).pubGet();
             final AnalyzerOutput output = AnalyzerExecutable.create(sensorContext, pubSpec).analyze();
 
             DartAnalyzerReportParser parser = new FlutterAnalyzerReportParser();
 
             if (!output.getAnalyzerMode().equals(AnalyzerExecutable.Mode.FLUTTER)) {
                 parser = output.getMode().equals(AnalyzerOutput.Mode.MACHINE)
-                        ? new DartAnalyzerMachineReportParser() : new DartAnalyzerLegacyReportParser();
+                        ? new DartAnalyzerMachineReportParser()
+                        : new DartAnalyzerLegacyReportParser();
             }
 
             final List<DartAnalyzerReportIssue> issues = parser.parse(output.getContent());
@@ -81,7 +86,6 @@ public class DartAnalyzerSensor implements Sensor {
         } catch (IOException e) {
             LOGGER.error("Analysis failed", e);
         }
-
 
     }
 
@@ -96,7 +100,8 @@ public class DartAnalyzerSensor implements Sensor {
             } else {
                 final InputFile inputFile = Objects.requireNonNull(sensorContext.fileSystem().inputFile(fp));
                 sensorContext.newIssue()
-                        .forRule(RuleKey.of(DartAnalyzerRulesDefinition.REPOSITORY_KEY, issue.getRuleId().toLowerCase(Locale.ROOT)))
+                        .forRule(RuleKey.of(DartAnalyzerRulesDefinition.REPOSITORY_KEY,
+                                issue.getRuleId().toLowerCase(Locale.ROOT)))
                         .at(issue.toNewIssueLocationFor(inputFile))
                         .save();
             }
